@@ -22,7 +22,6 @@ These stages are spread across different modules in the `agave` repository, with
 - `poh/src/poh_recorder.rs`
 - `turbine/src/broadcast_stage.rs`
 
----
 
 ## 2. The Purpose of the Scheduler
 
@@ -37,7 +36,6 @@ The Scheduler sits inside the `BankingStage` and is responsible for **paralleliz
 
 These modules implement lock-aware scheduling, priority queuing based on fees, and concurrency control.
 
----
 
 ## 3. How does the Scheduler work?
 
@@ -58,7 +56,6 @@ Using either `greedy_scheduler.rs` or `prio_graph_scheduler.rs`, the scheduler b
 ### ➤ e. Dispatch to Consumers
 Batches are handed off to `consume_worker.rs` threads for actual execution against the `Bank` state.
 
----
 
 ## 4. How does it integrate with other parts of the validator?
 
