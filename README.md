@@ -47,6 +47,19 @@ This project simulates a simplified validator node that:
 * Linux or macOS with terminal support
 * `make`, `lsof`, and `kill` utilities (standard on Unix)
 
+* Install Go:
+
+  - **macOS**: Use Homebrew
+    ```bash
+    brew install go
+    ```
+
+  - **Linux (Debian/Ubuntu)**:
+    ```bash
+    sudo apt update
+    sudo apt install golang-go
+    ```
+
 ### Step 1: Clone and Setup
 
 ```bash
@@ -73,7 +86,15 @@ This file contains initial balances and is used when starting the validator.
 $ make full
 ```
 
-This builds the validator, starts the HTTP server in one terminal, the validator in another, and sends test transactions via `send_tx.go`.
+This builds the validator, starts the HTTP server in one terminal and the validator in another.
+
+### Step 4: Send test transactions
+
+```bash
+$ make test
+```
+
+This sends a batch of test transactions from `test/send_tx.go` to the validator over UDP.
 
 ### Optional: Run manually if `make full` doesn’t launch terminals correctly
 
@@ -81,10 +102,9 @@ This builds the validator, starts the HTTP server in one terminal, the validator
 $ make build       # Build the validator binary
 $ make server      # Run HTTP server (on :2002)
 $ make run         # Start validator (UDP :2001)
-$ make test        # Send test transactions
 ```
 
-### Step 4: Reset
+### Optional: Reset environment
 
 To stop all processes and start fresh:
 
