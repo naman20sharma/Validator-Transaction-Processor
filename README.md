@@ -1,138 +1,80 @@
-# Sig Take-Home Exercise
+# Validator Transaction Processor
 
-This repository contains Part 2 of the take-home assignment for SIG. It implements a simplified Solana-like transaction validator with real-time batching, conflict handling, state snapshots, and UDP/HTTP communication between client and server.
+A simplified Solana-inspired transaction validator written in Go.  
+It demonstrates real-time batching, conflict handling, state snapshots, and UDP/HTTP communication between client and server. This project is meant as an educational exploration of validator design and can serve as a base for experimenting with distributed systems and blockchain-style transaction flow.
 
----
+## Background
 
-## Part 1: Leader Phase Design
+The design draws inspiration from Solana’s Agave validator. Alongside the code, I have written a breakdown of the *leader phase* — covering responsibilities such as Banking Stage, Scheduler, Proof-of-History (PoH) integration, transaction execution, and commitment pipeline.
 
-The architectural analysis and breakdown of the `leader` phase from the Solana validator is provided in:
+See: **`leader-phase/leader-phase.md`**
 
-**`leader-phase/leader-phase.md`**
 
-This file covers the responsibilities and internal flow of the Banking Stage, Scheduler, PoH integration, transaction execution, and commitment pipeline based on Solana's Agave implementation.
+## Features
 
----
+- Listens for transactions on **UDP port 2001**  
+- Batches incoming transactions (up to 100 at a time)  
+- Posts each batch to an HTTP server (simulating downstream consumers)  
+- Applies valid transactions locally with fee deduction and balance mutation  
+- Generates snapshots of account balances after each batch  
+- Logs real-time statistics such as transaction counts, fee accumulation, and invalid counts  
 
-## Part 2: Validator Implementation
+## Project Structure
 
-### Design Overview
+- `main.go` – Entry point, bootstraps handler, processor, and batch sender  
+- `processor/` – Core logic for validation, application, and batching  
+- `models/transactions.go` – Transaction structure and input parsing  
+- `test/send_tx.go` – Sends test transactions to UDP port 2001  
+- `test_server/server.go` – Simple HTTP batch receiver (port 2002)  
+- `scripts/` – Build and run scripts  
+- `Makefile` – Common automation for build, run, test, reset  
 
-This project simulates a simplified validator node that:
-
-* Listens for transactions on **UDP port 2001**.
-* Batches incoming transactions up to 100 at a time.
-* Posts each batch to an HTTP server (simulating downstream consumers).
-* Applies valid transactions locally, including fee deduction and balance mutation.
-* Takes a snapshot of account balances after each batch.
-* Logs real-time statistics like total transactions, fee accumulation, and invalid counts.
-
-### Key Components
-
-* `main.go` – Entry point, bootstraps handler, processor, and batch sender.
-* `processor/` – Core logic for transaction validation, application, and batching.
-* `models/transactions.go` – Transaction structure and input parsing.
-* `test/send_tx.go` – Sends test transactions to UDP port 2001.
-* `test_server/server.go` – Receives HTTP batches and prints them (runs on port 2002).
-* `scripts/` – Build and run scripts.
-* `Makefile` – Easy automation of tasks like build, run, test, and reset.
-
----
-
-## How to Run
+## Getting Started
 
 ### Prerequisites
+- Go 1.20+  
+- Linux or macOS  
+- `make`, `lsof`, and `kill` utilities  
 
-* Go 1.20+
-* Linux or macOS with terminal support
-* `make`, `lsof`, and `kill` utilities (standard on Unix)
+### Install Go
 
-* Install Go:
-
-  - **macOS**: Use Homebrew
-    ```bash
-    brew install go
-    ```
-
-  - **Linux (Debian/Ubuntu)**:
-    ```bash
-    sudo apt update
-    sudo apt install golang-go
-    ```
-
-### Step 1: Clone and Setup
-
+Install Go (example for macOS with Homebrew):
 ```bash
-$ git clone https://github.com/naman20sharma/sig-takehome-exercise.git
-$ cd sig-takehome-exercise
-$ go mod tidy
+brew install go
 ```
 
-Make sure `go.mod` is present in the root directory.
-
-### Step 2: Provide Snapshot
-
-Place your input account snapshot in the root directory with the filename:
-
+### Clone and Setup
 ```bash
-accounts.json
+git clone https://github.com/<your-username>/validator-transaction-processor.git
+cd validator-transaction-processor
+go mod tidy
 ```
 
-This file contains initial balances and is used when starting the validator.
+### Provide Initial Snapshot
 
-### Step 3: Run everything together (auto-detects OS)
+Place your starting account balances in the root as accounts.json.
 
+### Run Everything
 ```bash
-$ make full
+make full
 ```
 
-This builds the validator, starts the HTTP server in one terminal and the validator in another.
+This builds the validator, starts the HTTP server, and launches the validator.
 
-### Step 4: Send test transactions
-
+### Send Test Transactions
 ```bash
-$ make test
+make test
 ```
 
-This sends a batch of test transactions from `test/send_tx.go` to the validator over UDP.
-
-### Optional: Run manually if `make full` doesn’t launch terminals correctly
-
+### Reset Environment
 ```bash
-$ make build       # Build the validator binary
-$ make server      # Run HTTP server (on :2002)
-$ make run         # Start validator (UDP :2001)
+make reset
+make clean
 ```
-
-### Optional: Reset environment
-
-To stop all processes and start fresh:
-
-```bash
-$ make reset
-$ make clean
-```
-
-This kills any existing validator/server, frees UDP port 2001 and HTTP port 2002, and deletes the `bin/validator` binary.
-
----
-
-## File I/O Notes
-
-* The validator expects `accounts.json` as input.
-* After each batch, a new snapshot is written to the root directory as:
-
-```
-accounts-T-{timestamp}.json
-```
-
-These reflect updated balances.
-
----
 
 ## Transaction Format
 
-Each transaction has the following JSON schema:
+Example JSON transaction:
 
 ```json
 {
@@ -144,41 +86,17 @@ Each transaction has the following JSON schema:
 }
 ```
 
----
-
 ## Design Decisions
 
-* **Conflict Resolution**: To avoid double-spending or race conditions, each batch avoids including multiple transactions that touch the same accounts. Conflicting ones are deferred to future batches.
+- Conflict Resolution: Transactions that touch the same accounts are deferred to future batches.
+- Batching: Max 100 transactions per batch, max 100 batches/sec.
+- Loose Coupling: UDP listener, batch sender, and snapshot saver are decoupled with in-memory buffers.
+- Logging: Stats logged every 30s.
+- Cross-Platform Support: make full adapts for macOS and Linux.
 
-* **Batching**: Max 100 transactions per batch, max 100 batches/sec. This simulates real-time leader tick batching.
+## Trade-offs and Future Improvements
 
-* **Loose Coupling**: The UDP listener, batch sender, and snapshot saver are fully decoupled and communicate via in-memory buffers.
-
-* **Logging**: Transaction stats (received, processed, fees, etc.) are logged every 30s.
-
-* **Cross-Platform Support**: `make full` detects `Darwin` (macOS) or Linux and launches new terminals accordingly.
-
----
-
-## Trade-offs
-
-* **Error Tolerance**: Invalid transactions are logged but do not interrupt the processing of the batch. This increases fault tolerance but risks overlooking frequent or critical transaction issues if not monitored carefully.
-
-* **No Persistent Queueing**: Transactions are held in memory before batching. If the validator crashes before processing them, the in-flight transactions are lost. A persistent queue (e.g., file-based or Redis) could improve fault tolerance but adds complexity.
-
-* **Simple Conflict Handling**: Transactions that conflict are deferred, not re-ordered or partially applied. This simplifies logic but can increase latency for high-volume account interactions.
-
-* **Fixed Port Binding**: The server and validator use hardcoded ports (2001 for UDP, 2002 for HTTP). While straightforward, this limits flexibility in multi-instance environments unless recompiled or updated.
-
-* **No TLS or Auth**: The UDP and HTTP endpoints are unencrypted and unauthenticated, making them unsuitable for production without wrapping layers or reverse proxies.
-
----
-
-## Submission
-
-Please ensure both parts are present:
-
-* Part 1: `leader-phase/leader-phase.md`
-* Part 2: This project and source code
-
-Thank you for the opportunity!
+- Transactions are held in memory, so a crash drops in-flight transactions. A persistent queue would help.
+- Conflict handling is simple (defer only) which may increase latency under contention.
+- Ports are hardcoded (2001/2002). Configurable ports would be more flexible.
+- No TLS or authentication is provided — suitable for experiments, not production.
